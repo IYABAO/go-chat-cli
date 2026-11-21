@@ -1,8 +1,9 @@
 // go-chat-cli: 一个最小的 OpenAI 兼容 API 命令行聊天工具
 // 用法:
-//   export OPENAI_API_KEY="sk-xxx"
-//   export OPENAI_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"  # 可选, 默认 OpenAI
-//   go run .
+//
+//	export OPENAI_API_KEY="sk-xxx"
+//	export OPENAI_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"  # 可选, 默认 OpenAI
+//	go run .
 package main
 
 import (
@@ -36,6 +37,9 @@ type chatResponse struct {
 		} `json:"delta"`
 		Message Message `json:"message"`
 	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error"`
 }
 
 func main() {
@@ -129,6 +133,13 @@ func streamChat(client *http.Client, baseURL, apiKey, model string, history []Me
 		var chunk chatResponse
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue
+		}
+		if chunk.Error != nil {
+			msg := strings.TrimSpace(chunk.Error.Message)
+			if msg == "" {
+				msg = "unknown error"
+			}
+			return full.String(), fmt.Errorf("API 返回错误: %s", msg)
 		}
 		if len(chunk.Choices) > 0 {
 			delta := chunk.Choices[0].Delta.Content
